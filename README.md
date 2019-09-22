@@ -9,8 +9,7 @@ It provides both a Visual Novel-esque quick save menu, and some additional Choic
 
 As the ChoiceScript save plugin is an unofficial 'addon' for ChoiceScript, there are a few technical steps required to get it up and running.
 
-First and foremost, you'll need to download the latest copy of the JavaScript file here.
-Next, you'll need to add that file to your game's 'web' folder, next to the other script files, as shown below.
+First and foremost, you'll need to download the latest copy of the JavaScript file <a href="https://gist.githubusercontent.com/CareyJWilliams/b11b15f8636475023d78a7d9a16dea92/raw/f40b3ef996a422f378a6ed82a3cf9681aa48f204/ChoiceScriptSavePlugin.js" download>here</a>. Next, you'll need to add that file to your game's 'web' folder, next to the other script files, as shown below.
 
 ![Adding the script to the web folder](../assets/images/docs_web_folder.jpg?raw=true)
 
