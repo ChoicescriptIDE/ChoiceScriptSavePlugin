@@ -1,0 +1,55 @@
+*label top
+*temp action "save"
+*sm_update
+Detected ${_sm_save_count} saves.
+*line_break
+*if (_sm_save_count >= 1)
+    Last save was ${_sm_save_name[0]} on ${_sm_save_date[0]}
+
+*choice
+    *if (action = "save") # [Quick Save]
+        *sm_save "Quick Save"
+        *goto top
+    *if (action = "save") # [New Save]
+        *temp save_name ""
+        What would you like to call this save?
+        *input_text save_name
+        *sm_save save_name
+        *goto top
+    # Load
+        *set action "load"
+        *goto menu
+    # Delete
+        *set action "delete"
+        *goto menu
+
+*label menu
+*temp offset 0
+*label menu_offset
+*temp selected_save_id 0
+*sm_update
+What would you like to ${action}?
+*fake_choice
+    *if ((action != "save") and (_sm_save_count > offset)) # ${_sm_save_name[offset]} ${_sm_save_date[offset]}
+        *set selected_save_id _sm_save_id[offset]
+    *if ((action != "save") and (_sm_save_count > (offset + 1))) # ${_sm_save_name[offset+1]} ${_sm_save_date[offset+1]}
+        *set selected_save_id _sm_save_id[offset+1]
+    *if ((action != "save") and (_sm_save_count > (offset + 2))) # ${_sm_save_name[offset+2]} ${_sm_save_date[offset+2]}
+        *set selected_save_id _sm_save_id[offset+2]
+    *if ((action != "save") and (_sm_save_count > (offset + 3))) # ${_sm_save_name[offset+3]} ${_sm_save_date[offset+3]}
+        *set selected_save_id _sm_save_id[offset+3]
+    *if ((action != "save") and (_sm_save_count > (offset + 4))) # ${_sm_save_name[offset+4]} ${_sm_save_date[offset+4]}
+        *set selected_save_id _sm_save_id[offset+4]
+    *if ((action != "save") and (_sm_save_count > (offset + 5))) # --> Next
+        *set offset + 5
+        *goto menu_offset
+    *if (offset > 0) # <-- Previous
+        *set offset - 5
+        *goto menu_offset
+    # Return
+        *goto top
+*if (action = "load") and (selected_save_id > 0)
+    *sm_load selected_save_id
+*if (action = "delete") and (selected_save_id > 0)
+    *sm_delete selected_save_id
+*goto menu

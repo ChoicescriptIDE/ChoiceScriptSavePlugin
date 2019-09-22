@@ -1,0 +1,26 @@
+{
+  "name": "choicescript-save-plugin",
+  "version": "1.0.0",
+  "description": "A small addon that allows for control over persistent saving in ChoiceScript games.",
+  "main": "ChoiceScriptSavePlugin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node uglify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChoicescriptIDE/ChoiceScriptSavePlugin.git"
+  },
+  "author": "CJW",
+  "bugs": {
+    "url": "https://github.com/ChoicescriptIDE/ChoiceScriptSavePlugin/issues"
+  },
+  "homepage": "https://github.com/ChoicescriptIDE/ChoiceScriptSavePlugin#readme",
+  "devDependencies": {
+    "gulp": "^4.0.2",
+    "gulp-uglify": "^3.0.2"
+  },
+  "dependencies": {
+    "gulp-cli": "^2.2.0"
+  }
+}
