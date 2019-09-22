@@ -70,10 +70,10 @@ Deletes the save with the given id.
 
 Populates (or updates) the following helper variables:
 
-(number) ```_sm_save_count```: The number of saves detected.
-(array of numbers) ```_sm_save_id_x```: These variables hold the ID (used for loading and deleting) of the given save. 
-(array of strings) ```_sm_save_name_x```: These variables hold the name for the given save (if it has one). 
-(array of strings) ```_sm_save_date_x```: These variables hold a string formatted date marking the save time.
+- (number) ```_sm_save_count```: The number of saves detected.
+- (array of numbers) ```_sm_save_id_x```: These variables hold the ID (used for loading and deleting) of the given save.
+- (array of strings) ```_sm_save_name_x```: These variables hold the name for the given save (if it has one).
+- (array of strings) ```_sm_save_date_x```: These variables hold a string formatted date marking the save time.
 
 #### \*sm_menu
 
