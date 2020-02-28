@@ -17,7 +17,6 @@ Scene.prototype.sm_load = function(line) {
 }
 
 Scene.prototype.sm_delete = function(line) {
-    //initStore().remove(slot);
     var stack = this.tokenizeExpr(line);
     if (stack.length != 1)
         throw new Error("sm_delete: Invalid number of arguments, expected 1.");
@@ -25,34 +24,32 @@ Scene.prototype.sm_delete = function(line) {
 }
 
 Scene.prototype.sm_update = function() {
-    var self = this;
-    var saves = ChoiceScriptSavePlugin._getSaveList();
-    self.stats._sm_save_count = saves.length;
-    for (var i = 0; i < saves.length; i++) {
-        ChoiceScriptSavePlugin._getSaveData(saves[i], function(saveData) {
-            if (saveData) {
-                self.stats["_sm_save_id_" + i] = saves[i];
-                self.stats["_sm_save_name_" + i] = saveData.temps._saveName || "";
-                self.stats["_sm_save_date_" + i] = simpleDateTimeFormat(new Date(parseInt(saves[i])));
-            }
-        });
-    }
+    if (typeof this.stats._sm_save_count === "undefined")
+        this.stats._sm_save_count = 0;
+    ChoiceScriptSavePlugin._getSaveList(function(saveList) {
+        if (!saveList)
+            return;
+        ChoiceScriptSavePlugin._syncHelperVariables(saveList, function() {});
+    });
 }
 
 Scene.prototype.sm_menu = function(data) {
     data = data || "";
     data = data.toLowerCase();
+    var selectEle = document.getElementById("quickSaveMenu");
+    if (!selectEle)
+        return;
     var active = false;
     if (data === "false") {
         active = false;
     } else if (data === "true") {
         active = true;
+    } else if (!data) { // toggle
+        active = selectEle.style.display == "none";
     } else {
-        throw new Error("*sm_menu: expected true or false as an argument!");
+        throw new Error("*sm_menu: expected true, false (or nothing) as an argument!");
     }
-    var selectEle = document.getElementById("quickSaveMenu");
-    if (selectEle)
-        selectEle.style.display = active ? "inline" : "none";
+    selectEle.style.display = active ? "inline" : "none";
     var btns = document.getElementsByClassName("savePluginBtn");
     for (var i = 0; i < btns.length; i++) {
         btns[i].style.display = active ? "inline" : "none";
@@ -78,23 +75,28 @@ ChoiceScriptSavePlugin._CSS =
 /* Saving once a page has finished loading causes a lot of problems.
    However, ChoiceScript already stores a working save at the top of every page,
    so we can just copy that save over to the specified slot. */
-ChoiceScriptSavePlugin._save = function(dateSlot, saveName) {
+ChoiceScriptSavePlugin._save = function(saveId, saveName) {
     restoreObject(initStore(), "state", null, function(baseSave) {
         if (baseSave) {
-            baseSave.temps["_saveName"] = saveName || "";
-            saveCookie(function() {}, dateSlot, baseSave.stats, baseSave.temps, baseSave.lineNum, baseSave.indent, this.debugMode, this.nav);
-            /* Attempt to re-populate the quick save menu.
-               This might not actually exist when an sm_save is run,
-               so we have to wait a few seconds. If it still doesn't exist
-               it's not the end of the world, but the save won't appear until
-               the next refresh. */
-            setTimeout(function() {
-                var selectEle = document.getElementById("quickSaveMenu");
-                if (selectEle) {
-                    selectEle.innerHTML = "";
-                    ChoiceScriptSavePlugin._populateSaveMenu(selectEle);
-                }
-            }, 3000);
+            baseSave.stats["_smSaveName"] = saveName || "";
+            baseSave.stats["_smSaveDateId"] = saveId;
+            ChoiceScriptSavePlugin._addToSaveList(saveId, function(success) {
+                if (!success)
+                    return;
+                saveCookie(function() {}, ChoiceScriptSavePlugin._formatSlotName(saveId), baseSave.stats, baseSave.temps, baseSave.lineNum, baseSave.indent, this.debugMode, this.nav);
+                /* Attempt to re-populate the quick save menu.
+                This might not actually exist when an sm_save is run,
+                so we have to wait a few seconds. If it still doesn't exist
+                it's not the end of the world, but the save won't appear until
+                the next refresh. */
+                setTimeout(function() {
+                    var selectEle = document.getElementById("quickSaveMenu");
+                    if (selectEle) {
+                        selectEle.innerHTML = "";
+                        ChoiceScriptSavePlugin._populateSaveMenu(selectEle);
+                    }
+                }, 3000);
+            });
         } else {
             /* ChoiceScript hasn't created a save we can use yet.
                This happens when we try to save right after the game
@@ -104,17 +106,39 @@ ChoiceScriptSavePlugin._save = function(dateSlot, saveName) {
     });
 }
 
-ChoiceScriptSavePlugin._load = function(save_id) {
-    clearScreen(loadAndRestoreGame.bind(stats.scene, save_id));
+/* Utility function to grab a slots (near) full name:
+     Save data is stored in the form:
+        'state' + STORE_NAME + '_SAVE_' + dateId
+    Where 'state' is something ChoiceScript uses internally,
+    STORE_NAME is provided in the game's index.html,
+    and dateId is the unique handle/key stored in the save list.
+
+    Note that 'state' is not included here, as we use some internal
+    CS functions that already add it. Instead we hard-code it in the
+    few places we rely directly on the persist.js API.
+*/
+ChoiceScriptSavePlugin._formatSlotName = function(saveId){
+    return (window.storeName + '_SAVE_' + saveId);
 }
 
-ChoiceScriptSavePlugin._delete = function(save_id) {
-    localStorage.removeItem("PS" + window.storeName.replace("_", "__") + "PSstate" + save_id);
-    var select = document.getElementById("quickSaveMenu");
-    if (select) {
-        var deletedOption = select.options[select.selectedIndex];
-        deletedOption.parentElement.removeChild(deletedOption);
-    }
+ChoiceScriptSavePlugin._load = function(saveId) {
+    clearScreen(loadAndRestoreGame.bind(stats.scene, ChoiceScriptSavePlugin._formatSlotName(saveId)));
+}
+
+ChoiceScriptSavePlugin._delete = function(saveId) {
+    ChoiceScriptSavePlugin._removeFromSaveList(saveId, function(success) {
+        if (!success)
+            return;
+        var select = document.getElementById("quickSaveMenu");
+        if (select) {
+            var deletedOption = select.options[select.selectedIndex];
+            if (deletedOption)
+                deletedOption.parentElement.removeChild(deletedOption);
+        }
+        initStore().remove("state" + ChoiceScriptSavePlugin._formatSlotName(saveId), function(success, val) {
+            // Likely there's nothing to delete
+        });
+    });
 }
 
 ChoiceScriptSavePlugin._createQuickSaveMenu = function() {
@@ -164,30 +188,34 @@ ChoiceScriptSavePlugin._createQuickSaveMenu = function() {
 
 /* Add the 'option' elements to the given selection input */
 ChoiceScriptSavePlugin._populateSaveMenu = function(selectEle) {
-    var saves = ChoiceScriptSavePlugin._getSaveList();
-    for (var i = 0; i < saves.length; i++) {
-        var option = document.createElement("option");
-        option.setAttribute("value", saves[i] /* time/date */ );
-        /* Grab the save data, so we can give it a nice title via _saveName */
-        ChoiceScriptSavePlugin._getSaveData(saves[i], function(saveData) {
-            if (!saveData) {
-                alert("Error: Failed to parse a save. Please report this.");
-                option.innerHTML = "Failed to load save.";
-                return;
-            } else {
-                var slotDesc = saveData.stats.sceneName + '.txt (' + simpleDateTimeFormat(new Date(parseInt(saves[i]))) + ')';
-                if (saveData.temps._saveName) {
-                    slotDesc = saveData.temps._saveName + " &mdash; " + slotDesc;
+    ChoiceScriptSavePlugin._getSaveList(function(saveList) {
+        if (!saveList)
+            return;
+        saveList.forEach(function(saveId) {
+            /* Grab the save data, so we can give it a nice title via _saveName */
+            ChoiceScriptSavePlugin._getSaveData(saveId, function(saveData) {
+                if (!saveData) {
+                    return;
                 }
-                option.innerHTML = slotDesc;
-            }
+                var option = document.createElement("option");
+                option.setAttribute("value", saveData.stats._smSaveDateId /* time/date */ );
+                if (!saveData) {
+                    option.innerHTML = "Failed to load save.";
+                } else {
+                    var slotDesc = saveData.stats.sceneName + '.txt (' + simpleDateTimeFormat(new Date(parseInt(saveData.stats._smSaveDateId))) + ')';
+                    if (saveData.stats._smSaveName) {
+                        slotDesc = saveData.stats._smSaveName + " &mdash; " + slotDesc;
+                    }
+                    option.innerHTML = slotDesc;
+                }
+                selectEle.appendChild(option);
+            });
         });
-        selectEle.appendChild(option);
-    }
+    });
 }
 
-ChoiceScriptSavePlugin._getSaveData = function(slot, callback) {
-    restoreObject(initStore(), "state" + slot, null, function(saveData) {
+ChoiceScriptSavePlugin._getSaveData = function(saveId, callback) {
+    restoreObject(initStore(), "state" + ChoiceScriptSavePlugin._formatSlotName(saveId), null, function(saveData) {
         if (saveData) {
             callback(saveData);
         } else {
@@ -197,20 +225,63 @@ ChoiceScriptSavePlugin._getSaveData = function(slot, callback) {
     });
 }
 
-/* Pull the list of stored 'saves' from the store by store name */
-ChoiceScriptSavePlugin._getSaveList = function() {
-    var saveList = [];
-    var saveRegExp = new RegExp(window.storeName.replace("_", "__") + "[A-Za-z]*state(\\d+)$");
-    for (var key in initStore().store) {
-        if (window.store.store.hasOwnProperty(key)) {
-            var match;
-            if (match = key.match(saveRegExp)) {
-                saveList.push(match[1]);
+/* The save list is a space separated string of date identifiers, e.g.
+        "1581976656199 1581976297095 1581976660752"
+    We use this to keep a record of stored save keys/handles.
+*/
+ChoiceScriptSavePlugin._removeFromSaveList = function(saveId, callback) {
+    ChoiceScriptSavePlugin._getSaveList(function(saveList) {
+        if (!saveList)
+            return;
+        var index = saveList.indexOf(saveId.toString());
+        if (index > -1)
+            saveList.splice(index, 1);
+        initStore().set("save_list", saveList.join(" "), function(success, val) {
+            ChoiceScriptSavePlugin._syncHelperVariables(saveList, function() {
+                callback(success);
+            })
+        });
+    });
+}
+
+ChoiceScriptSavePlugin._addToSaveList = function(saveId, callback) {
+    ChoiceScriptSavePlugin._getSaveList(function(saveList) {
+        if (!saveList)
+            return;
+        saveList.push(saveId.toString());
+        initStore().set("save_list", saveList.join(" "), function(success, val) {
+            ChoiceScriptSavePlugin._syncHelperVariables(saveList, function() {
+                callback(success);
+            })
+        });
+    });
+}
+
+ChoiceScriptSavePlugin._syncHelperVariables = function(saveList, callback) {
+    self.stats._sm_save_count = saveList.length;
+    saveList.forEach(function(save, index) {
+        ChoiceScriptSavePlugin._getSaveData(save, function(saveData) {
+            if (saveData) {
+                self.stats["_sm_save_id_" + index] = save;
+                self.stats["_sm_save_name_" + index] = saveData.stats._smSaveName || "";
+                self.stats["_sm_save_date_" + index] = simpleDateTimeFormat(new Date(parseInt(save)));
             }
-        }
-    }
-    return saveList.sort(function(a, b) {
-        return b - a
+        });
+    });
+    callback();
+}
+
+/* Pull the list of stored 'saves' from the store by store name */
+ChoiceScriptSavePlugin._getSaveList = function(callback) {
+    initStore().get("save_list", function(success, val) {
+        if (!success)
+            callback(null);
+        if (!val)
+            callback([]);
+        else
+            callback(saveList = val.split(" ").sort(function(a, b) {
+                return b - a;
+            }));
     });
 }
 

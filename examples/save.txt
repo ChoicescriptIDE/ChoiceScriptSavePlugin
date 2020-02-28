@@ -1,46 +1,75 @@
-*label top
-*temp action "save"
+*comment "ENUM" like constants to represent types of ACTION.
+*temp ACTION_SYNC 1
+*temp ACTION_SAVE 2
+*temp ACTION_LOAD 3
+*temp ACTION_DELETE 4
+
+*temp action ACTION_SYNC
+
+*comment Saving/loading is asynchronous whilst
+*comment ChoiceScript execution is synchronous. This means
+*comment we have to arbitrarily 'delay' access to save data.
+*comment Forcing a page_break between actions seemed the
+*comment simplest compromise for now.
+*label update
+*comment populate the save/load helper variable
 *sm_update
+Confirming
+*gosub print_action_id_as_string action "."
+*comment force a page_break to give the async update
+*comment time to populate the helper variables
+*page_break
+*set action ACTION_SAVE
+*label top
 Detected ${_sm_save_count} saves.
 *line_break
 *if (_sm_save_count >= 1)
     Last save was ${_sm_save_name[0]} on ${_sm_save_date[0]}
 
 *choice
-    *if (action = "save") # [Quick Save]
+    # [Quick Save]
         *sm_save "Quick Save"
-        *goto top
-    *if (action = "save") # [New Save]
+        *set action ACTION_SAVE
+        *comment update the helper variables
+        *goto update
+    # [New Save]
         *temp save_name ""
         What would you like to call this save?
         *input_text save_name
         *sm_save save_name
-        *goto top
+        *set action ACTION_SAVE
+        *comment update the helper variables
+        *goto update
     # Load
-        *set action "load"
+        *set action ACTION_LOAD
         *goto menu
     # Delete
-        *set action "delete"
+        *set action ACTION_DELETE
         *goto menu
+    # Toggle Quick Save Menu
+        *comment toggles visibility if no parameter is given
+        *sm_menu
+        *goto top
 
 *label menu
 *temp offset 0
 *label menu_offset
 *temp selected_save_id 0
-*sm_update
-What would you like to ${action}?
+What would you like to
+*gosub print_action_id_as_string action "?"
+*comment present paginated results for delete/load
 *fake_choice
-    *if ((action != "save") and (_sm_save_count > offset)) # ${_sm_save_name[offset]} ${_sm_save_date[offset]}
+    *if (_sm_save_count > offset) # ${_sm_save_name[offset]} ${_sm_save_date[offset]}
         *set selected_save_id _sm_save_id[offset]
-    *if ((action != "save") and (_sm_save_count > (offset + 1))) # ${_sm_save_name[offset+1]} ${_sm_save_date[offset+1]}
+    *if (_sm_save_count > (offset + 1)) # ${_sm_save_name[offset+1]} ${_sm_save_date[offset+1]}
         *set selected_save_id _sm_save_id[offset+1]
-    *if ((action != "save") and (_sm_save_count > (offset + 2))) # ${_sm_save_name[offset+2]} ${_sm_save_date[offset+2]}
+    *if (_sm_save_count > (offset + 2)) # ${_sm_save_name[offset+2]} ${_sm_save_date[offset+2]}
         *set selected_save_id _sm_save_id[offset+2]
-    *if ((action != "save") and (_sm_save_count > (offset + 3))) # ${_sm_save_name[offset+3]} ${_sm_save_date[offset+3]}
+    *if (_sm_save_count > (offset + 3)) # ${_sm_save_name[offset+3]} ${_sm_save_date[offset+3]}
         *set selected_save_id _sm_save_id[offset+3]
-    *if ((action != "save") and (_sm_save_count > (offset + 4))) # ${_sm_save_name[offset+4]} ${_sm_save_date[offset+4]}
+    *if (_sm_save_count > (offset + 4)) # ${_sm_save_name[offset+4]} ${_sm_save_date[offset+4]}
         *set selected_save_id _sm_save_id[offset+4]
-    *if ((action != "save") and (_sm_save_count > (offset + 5))) # --> Next
+    *if (_sm_save_count > (offset + 5)) # --> Next
         *set offset + 5
         *goto menu_offset
     *if (offset > 0) # <-- Previous
@@ -48,8 +77,15 @@ What would you like to ${action}?
         *goto menu_offset
     # Return
         *goto top
-*if (action = "load") and (selected_save_id > 0)
+*if (action = ACTION_LOAD) and (selected_save_id > 0)
     *sm_load selected_save_id
-*if (action = "delete") and (selected_save_id > 0)
+*if (action = ACTION_DELETE) and (selected_save_id > 0)
     *sm_delete selected_save_id
-*goto menu
+*goto update
+
+*comment helper routine to turn an ACTION_{TYPE} into
+*comment a human readable string, with an optional suffix.
+*label print_action_id_as_string
+*params aid
+@{action sync|save|load|delete}${param_2}
+*return

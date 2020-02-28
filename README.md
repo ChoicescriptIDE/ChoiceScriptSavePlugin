@@ -9,7 +9,7 @@ It provides both a Visual Novel-esque quick save menu, and some additional Choic
 
 As the ChoiceScript save plugin is an unofficial 'addon' for ChoiceScript, there are a few technical steps required to get it up and running.
 
-First and foremost, you'll need to download the latest copy of the JavaScript file <a href="https://gist.githubusercontent.com/CareyJWilliams/b11b15f8636475023d78a7d9a16dea92/raw/f40b3ef996a422f378a6ed82a3cf9681aa48f204/ChoiceScriptSavePlugin.js" download>here</a>. Next, you'll need to add that file to your game's 'web' folder, next to the other script files, as shown below.
+First and foremost, you'll need to download the latest copy of the JavaScript file <a href="https://gist.github.com/CareyJWilliams/b11b15f8636475023d78a7d9a16dea92" download>here</a>. Next, you'll need to add that file to your game's 'web' folder, next to the other script files, as shown below.
 
 ![Adding the script to the web folder](../assets/images/docs_web_folder.jpg?raw=true)
 
@@ -68,6 +68,11 @@ Deletes the save with the given id.
 
 ### \*sm_update
 
+> Due to the nature of ChoiceScript execution (synchronous) and the nature of saving/loading (asynchronous),
+> it is difficult to guarantee the accurate population of these variables in time for ChoiceScript's execution.
+> The recommendation thus is to use *sm_update way in advance of requiring it, to ensure you don't encounter
+> stale information or unintalized variables.
+
 Populates (or updates) the following helper variables:
 
 - (number) ```_sm_save_count```: The number of saves detected.
@@ -81,4 +86,5 @@ Disable (hide) or enable (show) the quick save menu.
 
 ```*sm_menu true``` enables (shows).
 ```*sm_menu false``` disables (hides).
+```*sm_menu``` toggles the current state.
 
