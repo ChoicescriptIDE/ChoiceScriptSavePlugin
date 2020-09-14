@@ -287,7 +287,8 @@ ChoiceScriptSavePlugin._getSaveList = function(callback) {
 
 ChoiceScriptSavePlugin._init = function() {
     // don't initialize until files have been uploaded (CS commit: 8092aedf17505bd5f9b46c76acf082b89d494a03)
-    if (("file:" === window.location.protocol) && (!window.uploadedFiles)) {
+    if (("file:" === window.location.protocol) &&
+       (typeof window.uploadedFiles === "undefined" && typeof allScenes === "undefined")) {
         setTimeout(ChoiceScriptSavePlugin._init, 3000);
         return;
     }
