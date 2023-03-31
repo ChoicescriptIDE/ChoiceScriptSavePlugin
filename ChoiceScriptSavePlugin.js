@@ -143,11 +143,14 @@ ChoiceScriptSavePlugin._delete = function(saveId) {
 
 ChoiceScriptSavePlugin._createQuickSaveMenu = function() {
 
-    var p = document.getElementById("restartButton").parentElement;
+    var p = document.getElementById("menuButton");
+    
     if (!p) {
         alert("Error: unable to attach quick save menu");
         return;
     }
+    
+    p = p.parentElement;
 
     // CSS
     var head = document.getElementsByTagName("head")[0];
